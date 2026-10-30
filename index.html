@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14161c">
+<title>Audiobooks</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root {
+    --bg: #14161c;
+    --surface: #1d2028;
+    --surface-2: #272b35;
+    --text: #eceef3;
+    --muted: #9aa1b1;
+    --accent: #f0a85a;
+    --accent-ink: #1a1206;
+    --danger: #ff6b6b;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.4 -apple-system, "Roboto", "Segoe UI", sans-serif;
+    overscroll-behavior-y: contain;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  button {
+    font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer;
+  }
+  svg { width: 24px; height: 24px; fill: currentColor; display: block; }
+  .hidden { display: none !important; }
+
+  /* ---------- Library ---------- */
+  #library { min-height: 100%; padding: 0 16px 120px; }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 0 10px; position: sticky; top: 0; background: var(--bg); z-index: 2;
+  }
+  .topbar h1 { font-size: 24px; margin: 0; font-weight: 700; }
+  .add-btn {
+    display: flex; align-items: center; gap: 6px; background: var(--accent); color: var(--accent-ink);
+    padding: 10px 16px; border-radius: 999px; font-weight: 600;
+  }
+  .add-btn svg { width: 20px; height: 20px; }
+  .book {
+    display: flex; gap: 14px; align-items: center; padding: 12px; margin: 10px 0;
+    background: var(--surface); border-radius: var(--radius); position: relative;
+  }
+  .book.current { box-shadow: inset 0 0 0 2px var(--accent); }
+  .book .thumb { width: 64px; height: 64px; border-radius: 10px; flex: none; }
+  .book .info { flex: 1; min-width: 0; }
+  .book .title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .book .author, .book .sub { color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .book .bar { height: 4px; background: var(--surface-2); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .book .bar div { height: 100%; background: var(--accent); }
+  .book .more { padding: 10px; margin: -10px -6px -10px 0; color: var(--muted); }
+  .empty { text-align: center; color: var(--muted); padding: 60px 20px; }
+  .empty p { margin: 8px 0; }
+  .storage { color: var(--muted); font-size: 13px; text-align: center; margin-top: 18px; }
+  .thumb, .cover {
+    background: linear-gradient(135deg, #3a3f4d, #262a33); background-size: cover; background-position: center;
+    display: flex; align-items: center; justify-content: center; color: var(--muted); font-weight: 700;
+    overflow: hidden;
+  }
+
+  #mini {
+    position: fixed; left: 10px; right: 10px; bottom: 10px; z-index: 5;
+    display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 8px;
+    background: var(--surface-2); border-radius: var(--radius); box-shadow: 0 6px 24px rgba(0,0,0,.45);
+  }
+  #mini .thumb { width: 48px; height: 48px; border-radius: 8px; flex: none; font-size: 14px; }
+  #mini .info { flex: 1; min-width: 0; }
+  #mini .t1 { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #mini .t2 { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #mini .play { width: 48px; height: 48px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: flex; align-items: center; justify-content: center; flex: none; }
+
+  /* ---------- Player ---------- */
+  #player {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg); z-index: 10;
+    display: flex; flex-direction: column; padding: 0 20px 20px; overflow-y: auto;
+  }
+  #player .topbar { justify-content: flex-start; gap: 6px; }
+  #player .topbar button { padding: 8px; margin-left: -8px; }
+  #player .topbar .bt { font-size: 15px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cover-wrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 160px; padding: 8px 0; }
+  .cover { width: 70vw; height: 70vw; width: min(78vw, 42vh); height: min(78vw, 42vh); border-radius: 18px; font-size: 40px; box-shadow: 0 12px 40px rgba(0,0,0,.5); }
+  .now { text-align: center; margin: 10px 0 4px; }
+  .now .chap { font-size: 20px; font-weight: 700; }
+  .now .meta { color: var(--muted); font-size: 14px; margin-top: 2px; }
+
+  .seek { margin-top: 14px; }
+  input[type=range] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 36px; background: transparent; margin: 0;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 6px; border-radius: 3px;
+    background: linear-gradient(to right, var(--accent) 0, var(--accent) var(--fill, 0%), var(--surface-2) var(--fill, 0%));
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--text); margin-top: -7px;
+  }
+  .times { display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; margin-top: -4px; }
+  .total { text-align: center; color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .total .bar { height: 3px; background: var(--surface-2); border-radius: 2px; margin: 6px auto 0; max-width: 240px; overflow: hidden; }
+  .total .bar div { height: 100%; background: var(--muted); }
+
+  .controls { display: flex; align-items: center; justify-content: space-between; margin: 18px auto 8px; max-width: 380px; width: 100%; }
+  .controls button { width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; border-radius: 50%; position: relative; }
+  .controls button:active { background: var(--surface); }
+  .controls svg { width: 30px; height: 30px; }
+  .controls .skip span { position: absolute; font-size: 10px; font-weight: 700; top: 22px; }
+  .controls .big { width: 76px; height: 76px; background: var(--accent); color: var(--accent-ink); }
+  .controls .big:active { background: var(--accent); transform: scale(.96); }
+  .controls .big svg { width: 40px; height: 40px; }
+
+  .tools { display: flex; justify-content: space-around; max-width: 380px; width: 100%; margin: 8px auto 0; }
+  .tools button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 10px; color: var(--muted); font-size: 13px; border-radius: 10px; min-width: 76px; }
+  .tools button.on { color: var(--accent); }
+  .tools button:active { background: var(--surface); }
+
+  /* ---------- Sheets ---------- */
+  #scrim { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.55); z-index: 20; }
+  .sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; background: var(--surface);
+    border-radius: 18px 18px 0 0; max-height: 75vh; display: flex; flex-direction: column;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .sheet h2 { font-size: 17px; margin: 0; padding: 18px 20px 10px; }
+  .sheet .list { overflow-y: auto; padding: 0 8px 12px; }
+  .sheet .item {
+    display: flex; width: 100%; text-align: left; padding: 14px 12px; border-radius: 10px; gap: 12px; align-items: baseline;
+  }
+  .sheet .item:active { background: var(--surface-2); }
+  .sheet .item .n { color: var(--muted); font-size: 13px; width: 26px; flex: none; text-align: right; font-variant-numeric: tabular-nums; }
+  .sheet .item .l { flex: 1; min-width: 0; }
+  .sheet .item .r { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .sheet .item.active { color: var(--accent); background: var(--surface-2); }
+  .sheet .item.danger { color: var(--danger); }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; padding: 4px 20px 20px; }
+  .chip { padding: 12px 16px; border-radius: 999px; background: var(--surface-2); font-weight: 600; min-width: 64px; text-align: center; }
+  .chip.on { background: var(--accent); color: var(--accent-ink); }
+  .speed-fine { display: flex; align-items: center; justify-content: center; gap: 20px; padding: 0 20px 22px; }
+  .speed-fine button { width: 52px; height: 52px; border-radius: 50%; background: var(--surface-2); font-size: 22px; font-weight: 700; }
+  .speed-fine output { font-size: 28px; font-weight: 700; min-width: 90px; text-align: center; font-variant-numeric: tabular-nums; }
+  .check { display: flex; gap: 12px; align-items: flex-start; padding: 6px 20px 4px; }
+  .check input { width: 22px; height: 22px; margin: 2px 0 0; accent-color: var(--accent); flex: none; }
+  .check small { display: block; color: var(--muted); }
+  .sheet .actions { display: flex; gap: 10px; padding: 16px 20px 20px; }
+  .sheet .actions button { flex: 1; padding: 14px; border-radius: 12px; background: var(--surface-2); font-weight: 600; }
+  .sheet .actions .primary { background: var(--accent); color: var(--accent-ink); }
+
+  #toast {
+    position: fixed; left: 50%; top: 16px; transform: translateX(-50%); z-index: 30;
+    background: #000; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 14px; max-width: 90vw; text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.14v13.72a1 1 0 0 0 1.52.85l10.9-6.86a1 1 0 0 0 0-1.7L9.52 4.29A1 1 0 0 0 8 5.14z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M12 5V1.5L7 6.5l5 5V8a6 6 0 1 1-6 6H4a8 8 0 1 0 8-9z"/></symbol>
+  <symbol id="i-fwd" viewBox="0 0 24 24"><path d="M12 5V1.5l5 5-5 5V8a6 6 0 1 0 6 6h2a8 8 0 1 1-8-9z"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6zM16 6h2v12h-2z"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M3 13h2v-2H3zm0 4h2v-2H3zm0-8h2V7H3zm4 4h14v-2H7zm0 4h14v-2H7zM7 7v2h14V7z"/></symbol>
+  <symbol id="i-speed" viewBox="0 0 24 24"><path d="M20.38 8.57l-1.23 1.85a8 8 0 0 1-.22 7.58H5.07A8 8 0 0 1 15.58 6.85l1.85-1.23A10 10 0 0 0 3.35 19a2 2 0 0 0 1.72 1h13.85a2 2 0 0 0 1.74-1 10 10 0 0 0-.27-10.44zm-9.79 6.84a2 2 0 0 0 2.83 0l5.66-8.49-8.49 5.66a2 2 0 0 0 0 2.83z"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12.3 22h-.1a10.3 10.3 0 0 1-7.34-3.15 10.46 10.46 0 0 1-.26-14 10.13 10.13 0 0 1 4-2.74 1 1 0 0 1 1.06.22 1 1 0 0 1 .24 1 8.4 8.4 0 0 0 1.94 8.81 8.47 8.47 0 0 0 8.83 1.94 1 1 0 0 1 1.27 1.29A10.16 10.16 0 0 1 19.6 19a10.28 10.28 0 0 1-7.3 3z"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M17 3H7a2 2 0 0 0-2 2v16l7-3 7 3V5a2 2 0 0 0-2-2z"/></symbol>
+</svg>
+
+<!-- Library -->
+<main id="library">
+  <div class="topbar">
+    <h1>Audiobooks</h1>
+    <button class="add-btn" id="addBtn"><svg><use href="#i-plus"/></svg>Add book</button>
+  </div>
+  <div id="books"></div>
+  <div class="empty hidden" id="empty">
+    <p style="font-size:40px;margin:0">🎧</p>
+    <p><b>No books yet</b></p>
+    <p>Tap <b>Add book</b> and pick an .m4b or .mp3 file.</p>
+  </div>
+  <div class="storage" id="storage"></div>
+</main>
+
+<div id="mini" class="hidden">
+  <div class="thumb" id="miniThumb"></div>
+  <div class="info" id="miniInfo">
+    <div class="t1" id="miniTitle"></div>
+    <div class="t2" id="miniSub"></div>
+  </div>
+  <button class="play" id="miniPlay" aria-label="Play"><svg><use href="#i-play"/></svg></button>
+</div>
+
+<!-- Player -->
+<section id="player" class="hidden">
+  <div class="topbar">
+    <button id="closePlayer" aria-label="Back to library"><svg><use href="#i-down"/></svg></button>
+    <div class="bt" id="pBook"></div>
+  </div>
+  <div class="cover-wrap"><div class="cover" id="pCover"></div></div>
+  <div class="now">
+    <div class="chap" id="pChap"></div>
+    <div class="meta" id="pMeta"></div>
+  </div>
+  <div class="seek">
+    <input type="range" id="seek" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="times"><span id="tLeft">0:00</span><span id="tRight">0:00</span></div>
+  </div>
+  <div class="total" id="totalWrap">
+    <span id="tTotal"></span>
+    <div class="bar"><div id="totalBar"></div></div>
+  </div>
+  <div class="controls">
+    <button id="bPrev" aria-label="Previous chapter"><svg><use href="#i-prev"/></svg></button>
+    <button id="bBack" class="skip" aria-label="Back 30 seconds"><svg><use href="#i-back"/></svg><span>30</span></button>
+    <button id="bPlay" class="big" aria-label="Play"><svg><use href="#i-play"/></svg></button>
+    <button id="bFwd" class="skip" aria-label="Forward 30 seconds"><svg><use href="#i-fwd"/></svg><span>30</span></button>
+    <button id="bNext" aria-label="Next chapter"><svg><use href="#i-next"/></svg></button>
+  </div>
+  <div class="tools">
+    <button id="bChapters"><svg><use href="#i-list"/></svg><span>Chapters</span></button>
+    <button id="bSpeed"><svg><use href="#i-speed"/></svg><span id="speedLabel">1.0×</span></button>
+    <button id="bSleep"><svg><use href="#i-moon"/></svg><span id="sleepLabel">Sleep</span></button>
+    <button id="bMark"><svg><use href="#i-bookmark"/></svg><span>Bookmark</span></button>
+  </div>
+</section>
+
+<div id="scrim" class="hidden"></div>
+<div class="sheet hidden" id="sheet"></div>
+<div id="toast" class="hidden"></div>
+
+<input type="file" id="filePick" class="hidden">
+<audio id="audio" preload="auto"></audio>
+
+<script src="chapters.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
